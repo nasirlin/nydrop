@@ -110,6 +110,7 @@
                         <div class="spinner-grow text-primary spinner-grow-sm me-2" role="status"></div>
                         <span class="fw-bold text-dark">Ready to receive files...</span>
                     </div>
+                    <div class="mt-2 small text-muted" id="storage-mode-indicator"></div>
                 </div>
 
                 <div id="transfer-area" class="d-none">
@@ -162,10 +163,9 @@
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
-    // Constants for Backpressure (防止卡頓的關鍵)
+    // Constants for Backpressure
     const CHUNK_SIZE = 16 * 1024; // 16KB chunks
-    const MAX_BUFFER_AMOUNT = 64 * 1024; // 64KB buffer limit (Safety threshold)
-
+    const MAX_BUFFER_AMOUNT = 256 * 1024; // Increased to 256KB for smoother flow
 
     console.log("Initializing System...");
     
@@ -308,7 +308,7 @@
 
     function setupDataChannel(channel) {
         dataChannel = channel;
-        dataChannel.binaryType = 'arraybuffer'; // 重要：確保二進位傳輸
+        dataChannel.binaryType = 'arraybuffer'; 
         
         dataChannel.onopen = () => {
             console.log("DATA CHANNEL OPEN");
@@ -320,28 +320,25 @@
         dataChannel.onmessage = handleReceiveMessage;
     }
 
-    // --- SENDER LOGIC (Multi-file + Backpressure) ---
+    // --- SENDER LOGIC (Multi-file + Robust Backpressure) ---
 
     function handleFilesSelect() {
         const files = document.getElementById('file-input').files;
         if (files.length === 0) return;
 
-        fileQueue = Array.from(files); // 轉為陣列
+        fileQueue = Array.from(files);
         totalFilesProcessed = 0;
 
-        // 初始化 UI
         document.getElementById('transfer-area').classList.remove('d-none');
         document.getElementById('transfer-complete-msg').classList.add('d-none');
         
         renderFileList(fileQueue);
         
-        // 開始傳輸第一個檔案
         processSendQueue();
     }
 
     async function processSendQueue() {
         if (fileQueue.length === 0) {
-            // 全部傳完
             document.getElementById('current-filename').innerText = "All files sent.";
             document.getElementById('transfer-complete-msg').classList.remove('d-none');
             return;
@@ -352,25 +349,22 @@
         
         try {
             await sendSingleFile(file);
-            // 成功傳送一個
             updateFileStatus(totalFilesProcessed, 'success');
-            fileQueue.shift(); // 移除已傳送
+            fileQueue.shift(); 
             totalFilesProcessed++;
-            // 遞迴呼叫下一個
-            processSendQueue(); 
+            // Small delay to allow receiver buffers to clear
+            setTimeout(processSendQueue, 100); 
         } catch (err) {
             console.error("Send error:", err);
             alert("Error sending file: " + file.name);
         }
     }
 
-    // 單一檔案傳送邏輯 (含背壓控制)
     function sendSingleFile(file) {
         return new Promise((resolve, reject) => {
             console.log(`Starting transfer: ${file.name}`);
             document.getElementById('current-filename').innerText = `Sending: ${file.name}`;
             
-            // 1. 傳送 Metadata
             dataChannel.send(JSON.stringify({
                 type: 'metadata',
                 name: file.name,
@@ -381,13 +375,14 @@
             const reader = new FileReader();
             let offset = 0;
 
+            // Optimized reading
             reader.onload = async (e) => {
                 const buffer = e.target.result;
                 
-                // 背壓控制循環：如果 buffer 滿了就等
                 try {
+                    // Strict Backpressure: Don't overload the channel
                     while (dataChannel.bufferedAmount > MAX_BUFFER_AMOUNT) {
-                        await new Promise(r => setTimeout(r, 10)); // 等待 10ms 直到 buffer 釋放
+                        await new Promise(r => setTimeout(r, 5));
                     }
                     
                     dataChannel.send(buffer);
@@ -395,11 +390,10 @@
                     updateProgress(offset, file.size);
 
                     if (offset < file.size) {
-                        // 讀取下一塊
                         readNextChunk();
                     } else {
                         console.log("File sent finish");
-                        resolve(); // Promise 完成
+                        resolve();
                     }
                 } catch(err) {
                     reject(err);
@@ -413,60 +407,93 @@
                 reader.readAsArrayBuffer(slice);
             }
 
-            // 開始第一次讀取
             readNextChunk();
         });
     }
 
-    // --- RECEIVER LOGIC ---
-
-    let receivedBuffers = [];
     let receivedSize = 0;
     let currentMeta = null;
+        let storageMode = 'memory';
+    let fileHandle = null;
+    let fileWritable = null;
+    let memoryBuffers = [];
 
-    function handleReceiveMessage(event) {
+    async function handleReceiveMessage(event) {
         const data = event.data;
-
-        // 1. 收到 Metadata (字串)
         if (typeof data === 'string') {
             const msg = JSON.parse(data);
             if(msg.type === 'metadata') {
                 currentMeta = msg;
-                receivedBuffers = [];
                 receivedSize = 0;
-                
-                // UI 更新
                 document.getElementById('transfer-area').classList.remove('d-none');
                 document.getElementById('receiver-ui').classList.add('d-none');
                 document.getElementById('current-filename').innerText = `Receiving: ${currentMeta.name}`;
-                
-                // 加到列表 UI
                 addReceivedFileToList(currentMeta.name);
+                await initializeStorageStrategy(currentMeta);
             }
             return;
         }
-
-        // 2. 收到檔案數據 (Binary)
         if (!currentMeta) return;
 
-        receivedBuffers.push(data);
-        receivedSize += data.byteLength;
-        updateProgress(receivedSize, currentMeta.size);
+        try {
+            if (storageMode === 'disk' && fileWritable) {
+                await fileWritable.write(data);
+            } else {
+                memoryBuffers.push(data);
+            }
 
-        // 3. 檔案接收完成
-        if (receivedSize === currentMeta.size) {
-            const blob = new Blob(receivedBuffers, { type: currentMeta.mime });
-            downloadFile(blob, currentMeta.name);
-            
-            // 標記 UI 為完成
-            markLastFileComplete();
-            
-            // 重置狀態準備接下一個
-            currentMeta = null;
-            receivedBuffers = [];
-            receivedSize = 0;
-            document.getElementById('current-filename').innerText = "Waiting for next file...";
+            receivedSize += data.byteLength;
+            updateProgress(receivedSize, currentMeta.size);
+            if (receivedSize === currentMeta.size) {
+                await finalizeFile();
+            }
+
+        } catch (error) {
+            console.error("Write error:", error);
+            alert("Error writing file to disk.");
         }
+    }
+
+    async function initializeStorageStrategy(meta) {
+        if ('showSaveFilePicker' in window) {
+            try {
+                fileHandle = await window.showSaveFilePicker({
+                    suggestedName: meta.name,
+                });
+                fileWritable = await fileHandle.createWritable();
+                storageMode = 'disk';
+                document.getElementById('storage-mode-indicator').innerHTML = '<i class="bi bi-hdd-fill"></i> Direct Disk Write Active';
+                return;
+            } catch (err) {
+                console.log("User cancelled or API failed, falling back to memory:", err);
+            }
+        }
+
+        storageMode = 'memory';
+        memoryBuffers = [];
+        document.getElementById('storage-mode-indicator').innerHTML = '<i class="bi bi-memory"></i> Memory Mode (Small files only)';
+    }
+
+    async function finalizeFile() {
+        if (storageMode === 'disk') {
+            if (fileWritable) {
+                await fileWritable.close(); 
+                fileWritable = null;
+                fileHandle = null;
+            }
+        } else {
+
+            const blob = new Blob(memoryBuffers, { type: currentMeta.mime });
+            downloadFile(blob, currentMeta.name);
+            memoryBuffers = []; 
+        }
+
+        markLastFileComplete();
+        
+        // Reset for next file
+        currentMeta = null;
+        receivedSize = 0;
+        document.getElementById('current-filename').innerText = "Waiting for next file...";
     }
 
     // --- Common UI Functions ---
@@ -487,7 +514,7 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000); // Cleanup
     }
 
     function renderFileList(files) {
@@ -507,7 +534,7 @@
         const el = document.querySelector(`#file-item-${index} .file-status-icon`);
         if (!el) return;
         
-        el.className = 'file-status-icon'; // reset
+        el.className = 'file-status-icon'; 
         if (status === 'loading') {
             el.className = 'spinner-border spinner-border-sm text-primary file-status-icon';
         } else if (status === 'success') {
@@ -515,7 +542,6 @@
         }
     }
 
-    // 接收端用的簡易列表
     function addReceivedFileToList(name) {
         const container = document.getElementById('file-list-container');
         const id = 'rx-file-' + document.querySelectorAll('.file-list-item').length;
@@ -538,7 +564,7 @@
     function resetTransferUI() {
         document.getElementById('transfer-area').classList.add('d-none');
         document.getElementById('sender-ui').classList.remove('d-none');
-        document.getElementById('file-input').value = ''; // clear input
+        document.getElementById('file-input').value = ''; 
         document.getElementById('progress-bar').style.width = '0%';
     }
 
