@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NY DROP | P2P File Transfer</title>
+    <title>NY DROP | Multi-File P2P Transfer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
      <link rel="stylesheet" href="function/inside.css">
-
+    <style>
+        .file-list-item {
+            font-size: 0.9rem;
+            background: #fff;
+            border: 1px solid #eee;
+        }
+        .file-status-icon {
+            width: 20px;
+        }
+    </style>
 </head>
 <body>
 
@@ -16,7 +25,7 @@
     <div class="card card-custom">
         <div class="card-header-custom">
             <h1 class="brand-title">NY DROP</h1>
-            <p class="brand-subtitle mb-0">P2P File Transfer</p>
+            <p class="brand-subtitle mb-0">Pro P2P File Transfer</p>
         </div>
         <div class="card-body p-4 p-md-5">
             
@@ -49,7 +58,7 @@
                 <h6 class="text-uppercase text-muted fw-bold mb-3 ls-1">Your Pairing Code</h6>
                 
                 <div class="bg-light p-4 rounded-4 mb-4 border border-2">
-                    <div id="code-display">...</div>
+                    <div id="code-display" class="fs-1 fw-bold text-dark">...</div>
                 </div>
                 
                 <div class="d-flex align-items-center justify-content-center text-primary bg-primary-subtle p-3 rounded-3">
@@ -67,7 +76,7 @@
                 </div>
                 
                 <div class="mb-4">
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="input-code" class="form-control form-control-lg" placeholder="000000" autocomplete="off">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="input-code" class="form-control form-control-lg text-center fw-bold" placeholder="000000" autocomplete="off">
                 </div>
                 
                 <div class="d-grid">
@@ -81,31 +90,48 @@
             </div>
 
             <div id="step-transfer" class="step-section">
-                <div class="text-center mb-4">
-                    <div class="display-1 text-success mb-3"><i class="bi bi-shield-check"></i></div>
-                    <h4 class="fw-bold">Connected!</h4>
-                    <p class="text-muted">Secure P2P tunnel established.</p>
+                <div class="text-center mb-3">
+                    <span class="badge bg-success-subtle text-success border border-success px-3 rounded-pill">
+                        <i class="bi bi-shield-check me-1"></i> Secure Tunnel Established
+                    </span>
                 </div>
                 
                 <div id="sender-ui" class="d-none">
-                    <div class="border-2 border-dashed border-primary rounded-4 p-4 text-center mb-3 bg-light" onclick="document.getElementById('file-input').click()" style="cursor: pointer;">
-                        <i class="bi bi-cloud-upload display-4 text-primary mb-2"></i>
-                        <p class="fw-bold mb-0">Click to Select File</p>
+                    <div class="border-2 border-dashed border-primary rounded-4 p-4 text-center mb-3 bg-light hover-effect" onclick="document.getElementById('file-input').click()" style="cursor: pointer; transition: all 0.2s;">
+                        <i class="bi bi-files display-4 text-primary mb-2"></i>
+                        <p class="fw-bold mb-0">Select Multiple Files</p>
+                        <small class="text-muted">Click to browse</small>
                     </div>
-                    <input type="file" id="file-input" class="d-none" onchange="sendFile()">
-                    <p id="file-name-display" class="text-center text-muted small"></p>
+                    <input type="file" id="file-input" class="d-none" multiple onchange="handleFilesSelect()">
                 </div>
 
-                <div id="receiver-ui" class="d-none text-center">
-                    <div class="spinner-grow text-primary mb-3" role="status"></div>
-                    <h5>Waiting for file...</h5>
+                <div id="receiver-ui" class="d-none text-center mb-3">
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="spinner-grow text-primary spinner-grow-sm me-2" role="status"></div>
+                        <span class="fw-bold text-dark">Ready to receive files...</span>
+                    </div>
                 </div>
 
-                <div class="mt-4 d-none" id="progress-container">
-                    <div class="progress" style="height: 12px; border-radius: 6px;">
-                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; background: var(--primary-gradient);"></div>
+                <div id="transfer-area" class="d-none">
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="fw-bold text-dark" id="current-filename">Preparing...</small>
+                            <small class="text-muted" id="current-percentage">0%</small>
+                        </div>
+                        <div class="progress" style="height: 10px; border-radius: 5px;">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; background: var(--primary-gradient);"></div>
+                        </div>
                     </div>
-                     <p id="status-text" class="text-center mt-2 small fw-bold text-dark"></p>
+
+                    <h6 class="text-muted text-uppercase small fw-bold mb-2">Transfer Queue</h6>
+                    <div class="list-group list-group-flush rounded-3 border" id="file-list-container" style="max-height: 200px; overflow-y: auto;">
+                        </div>
+                    
+                    <div id="transfer-complete-msg" class="text-center mt-3 d-none">
+                        <h5 class="text-success fw-bold">All Files Transferred!</h5>
+                        <button class="btn btn-sm btn-outline-dark mt-2" onclick="resetTransferUI()">Send More</button>
+                    </div>
                 </div>
             </div>
 
@@ -121,16 +147,25 @@
 <script>
     const SERVER_URL = "https://nydrop.onrender.com"; 
     
-    let socket;
-    let peerConnection;
-    let dataChannel;
-    let roomId;
+    // Core Variables
+    let socket, peerConnection, dataChannel, roomId;
     let isInitiator = false;
     let candidateQueue = [];
+    
+    // Transfer State
+    let fileQueue = [];
+    let isTransferring = false;
+    let totalFilesProcessed = 0;
 
+    // RTC Config
     const rtcConfig = {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
+
+    // Constants for Backpressure (防止卡頓的關鍵)
+    const CHUNK_SIZE = 16 * 1024; // 16KB chunks
+    const MAX_BUFFER_AMOUNT = 64 * 1024; // 64KB buffer limit (Safety threshold)
+
 
     console.log("Initializing System...");
     
@@ -141,18 +176,15 @@
         });
 
         socket.on('connect', () => {
-            console.log("Connected to Server:", socket.id);
+            console.log("Connected:", socket.id);
             updateSocketUI(true);
         });
 
         socket.on('disconnect', () => updateSocketUI(false));
-        socket.on('connect_error', (err) => {
-            console.error("Socket Error:", err);
-            updateSocketUI(false);
-        });
+        socket.on('connect_error', () => updateSocketUI(false));
 
     } catch (e) {
-        alert("Socket failed to load. Check internet.");
+        console.error(e);
     }
 
     function updateSocketUI(isOnline) {
@@ -171,15 +203,16 @@
         }
     }
 
+    // --- UI Navigation ---
     function startSender() {
-        if (!socket.connected) return alert("Wait for connection...");
+        if (!socket.connected) return alert("Connecting to server...");
         isInitiator = true;
         socket.emit('create-room');
         showStep('step-sender-wait');
     }
 
     function startReceiver() {
-        if (!socket.connected) return alert("Wait for connection...");
+        if (!socket.connected) return alert("Connecting to server...");
         isInitiator = false;
         showStep('step-receiver-input');
     }
@@ -187,22 +220,20 @@
     function joinRoom() {
         const input = document.getElementById('input-code');
         roomId = input.value.trim();
-        if(roomId.length !== 6) return alert("Enter 6 digits");
+        if(roomId.length !== 6) return alert("Please enter 6 digits");
         
         socket.emit('join-room', roomId);
-        document.getElementById('join-btn').innerText = "Connecting...";
-        document.getElementById('join-btn').disabled = true;
+        const btn = document.getElementById('join-btn');
+        btn.innerText = "Connecting...";
+        btn.disabled = true;
     }
 
     function showStep(stepId) {
-        document.querySelectorAll('.step-section').forEach(el => {
-            el.classList.remove('step-active');
-        });
-        
-        const target = document.getElementById(stepId);
-        target.classList.add('step-active');
+        document.querySelectorAll('.step-section').forEach(el => el.classList.remove('step-active'));
+        document.getElementById(stepId).classList.add('step-active');
     }
 
+    // --- Socket Events ---
     if (socket) {
         socket.on('room-created', (code) => {
             roomId = code;
@@ -215,8 +246,7 @@
         });
 
         socket.on('peer-joined', async () => {
-            console.log("Receiver joined! Starting WebRTC...");
-            
+            console.log("Peer joined, initiating WebRTC...");
             createPeerConnection();
             
             dataChannel = peerConnection.createDataChannel("fileTransfer");
@@ -225,11 +255,8 @@
             try {
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
-                console.log("Sending Offer...");
                 socket.emit('signal', { roomId, signalData: { type: 'offer', sdp: offer } });
-            } catch(err) {
-                console.error("Offer Error", err);
-            }
+            } catch(err) { console.error(err); }
         });
 
         socket.on('signal', async (data) => {
@@ -239,160 +266,216 @@
             try {
                 if (type === 'offer') {
                     if (isInitiator) return;
-                    console.log("Received Offer");
-                    
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
                     processQueue();
-
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
-                    
-                    console.log("Sending Answer...");
                     socket.emit('signal', { roomId, signalData: { type: 'answer', sdp: answer } });
                 }
-                
                 else if (type === 'answer') {
                     if (!isInitiator) return;
-                    console.log("Received Answer");
-                    
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
                     processQueue();
                 }
-
                 else if (candidate) {
                     if (peerConnection.remoteDescription) {
                         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
                     } else {
-                        console.log("Queuing Candidate...");
                         candidateQueue.push(new RTCIceCandidate(candidate));
                     }
                 }
-
-            } catch (e) {
-                console.error("Signal Error:", e);
-            }
+            } catch (e) { console.error(e); }
         });
     }
 
+    // --- WebRTC Core ---
     function createPeerConnection() {
         if (peerConnection) return;
-        
-        console.log("Creating RTCPeerConnection");
         peerConnection = new RTCPeerConnection(rtcConfig);
 
         peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                socket.emit('signal', { roomId, signalData: { candidate: event.candidate } });
-            }
-        };
-
-        peerConnection.onconnectionstatechange = () => {
-            console.log("State:", peerConnection.connectionState);
+            if (event.candidate) socket.emit('signal', { roomId, signalData: { candidate: event.candidate } });
         };
 
         peerConnection.ondatachannel = (event) => {
-            console.log("Received DataChannel");
             setupDataChannel(event.channel);
         };
     }
 
     async function processQueue() {
-        while(candidateQueue.length > 0) {
-            await peerConnection.addIceCandidate(candidateQueue.shift());
-        }
+        while(candidateQueue.length > 0) await peerConnection.addIceCandidate(candidateQueue.shift());
     }
 
     function setupDataChannel(channel) {
         dataChannel = channel;
+        dataChannel.binaryType = 'arraybuffer'; // 重要：確保二進位傳輸
         
         dataChannel.onopen = () => {
-            console.log("CHANNEL OPEN! Switching UI...");
-            
+            console.log("DATA CHANNEL OPEN");
             showStep('step-transfer');
-            
-            if (isInitiator) {
-                document.getElementById('sender-ui').classList.remove('d-none');
-            } else {
-                document.getElementById('receiver-ui').classList.remove('d-none');
-            }
+            if (isInitiator) document.getElementById('sender-ui').classList.remove('d-none');
+            else document.getElementById('receiver-ui').classList.remove('d-none');
         };
 
-        dataChannel.onmessage = handleMessage;
+        dataChannel.onmessage = handleReceiveMessage;
     }
+
+    // --- SENDER LOGIC (Multi-file + Backpressure) ---
+
+    function handleFilesSelect() {
+        const files = document.getElementById('file-input').files;
+        if (files.length === 0) return;
+
+        fileQueue = Array.from(files); // 轉為陣列
+        totalFilesProcessed = 0;
+
+        // 初始化 UI
+        document.getElementById('transfer-area').classList.remove('d-none');
+        document.getElementById('transfer-complete-msg').classList.add('d-none');
+        
+        renderFileList(fileQueue);
+        
+        // 開始傳輸第一個檔案
+        processSendQueue();
+    }
+
+    async function processSendQueue() {
+        if (fileQueue.length === 0) {
+            // 全部傳完
+            document.getElementById('current-filename').innerText = "All files sent.";
+            document.getElementById('transfer-complete-msg').classList.remove('d-none');
+            return;
+        }
+
+        const file = fileQueue[0];
+        updateFileStatus(totalFilesProcessed, 'loading');
+        
+        try {
+            await sendSingleFile(file);
+            // 成功傳送一個
+            updateFileStatus(totalFilesProcessed, 'success');
+            fileQueue.shift(); // 移除已傳送
+            totalFilesProcessed++;
+            // 遞迴呼叫下一個
+            processSendQueue(); 
+        } catch (err) {
+            console.error("Send error:", err);
+            alert("Error sending file: " + file.name);
+        }
+    }
+
+    // 單一檔案傳送邏輯 (含背壓控制)
+    function sendSingleFile(file) {
+        return new Promise((resolve, reject) => {
+            console.log(`Starting transfer: ${file.name}`);
+            document.getElementById('current-filename').innerText = `Sending: ${file.name}`;
+            
+            // 1. 傳送 Metadata
+            dataChannel.send(JSON.stringify({
+                type: 'metadata',
+                name: file.name,
+                size: file.size,
+                mime: file.type
+            }));
+
+            const reader = new FileReader();
+            let offset = 0;
+
+            reader.onload = async (e) => {
+                const buffer = e.target.result;
+                
+                // 背壓控制循環：如果 buffer 滿了就等
+                try {
+                    while (dataChannel.bufferedAmount > MAX_BUFFER_AMOUNT) {
+                        await new Promise(r => setTimeout(r, 10)); // 等待 10ms 直到 buffer 釋放
+                    }
+                    
+                    dataChannel.send(buffer);
+                    offset += buffer.byteLength;
+                    updateProgress(offset, file.size);
+
+                    if (offset < file.size) {
+                        // 讀取下一塊
+                        readNextChunk();
+                    } else {
+                        console.log("File sent finish");
+                        resolve(); // Promise 完成
+                    }
+                } catch(err) {
+                    reject(err);
+                }
+            };
+
+            reader.onerror = reject;
+
+            function readNextChunk() {
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                reader.readAsArrayBuffer(slice);
+            }
+
+            // 開始第一次讀取
+            readNextChunk();
+        });
+    }
+
+    // --- RECEIVER LOGIC ---
 
     let receivedBuffers = [];
     let receivedSize = 0;
-    let expectedSize = 0;
-    let fileName = "";
+    let currentMeta = null;
 
-    function handleMessage(event) {
+    function handleReceiveMessage(event) {
         const data = event.data;
-        
+
+        // 1. 收到 Metadata (字串)
         if (typeof data === 'string') {
-            const meta = JSON.parse(data);
-            if(meta.type === 'metadata') {
-                fileName = meta.name;
-                expectedSize = meta.size;
+            const msg = JSON.parse(data);
+            if(msg.type === 'metadata') {
+                currentMeta = msg;
                 receivedBuffers = [];
                 receivedSize = 0;
-                document.getElementById('progress-container').classList.remove('d-none');
-                document.getElementById('status-text').innerText = `Receiving: ${fileName}`;
+                
+                // UI 更新
+                document.getElementById('transfer-area').classList.remove('d-none');
                 document.getElementById('receiver-ui').classList.add('d-none');
+                document.getElementById('current-filename').innerText = `Receiving: ${currentMeta.name}`;
+                
+                // 加到列表 UI
+                addReceivedFileToList(currentMeta.name);
             }
             return;
         }
 
+        // 2. 收到檔案數據 (Binary)
+        if (!currentMeta) return;
+
         receivedBuffers.push(data);
         receivedSize += data.byteLength;
-        updateProgress(receivedSize, expectedSize);
+        updateProgress(receivedSize, currentMeta.size);
 
-        if (receivedSize === expectedSize) {
-            const blob = new Blob(receivedBuffers);
-            downloadFile(blob, fileName);
-            document.getElementById('status-text').innerText = "Download Complete!";
-            document.getElementById('progress-bar').classList.add('bg-success');
+        // 3. 檔案接收完成
+        if (receivedSize === currentMeta.size) {
+            const blob = new Blob(receivedBuffers, { type: currentMeta.mime });
+            downloadFile(blob, currentMeta.name);
+            
+            // 標記 UI 為完成
+            markLastFileComplete();
+            
+            // 重置狀態準備接下一個
+            currentMeta = null;
+            receivedBuffers = [];
+            receivedSize = 0;
+            document.getElementById('current-filename').innerText = "Waiting for next file...";
         }
     }
 
-    function sendFile() {
-        const file = document.getElementById('file-input').files[0];
-        if (!file) return;
-
-        document.getElementById('file-name-display').innerText = file.name;
-        document.getElementById('progress-container').classList.remove('d-none');
-        document.getElementById('status-text').innerText = "Sending...";
-
-        dataChannel.send(JSON.stringify({
-            type: 'metadata',
-            name: file.name,
-            size: file.size
-        }));
-
-        const chunkSize = 16 * 1024;
-        let offset = 0;
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            dataChannel.send(e.target.result);
-            offset += e.target.result.byteLength;
-            updateProgress(offset, file.size);
-            
-            if (offset < file.size) {
-                setTimeout(() => readSlice(offset), 0);
-            } else {
-                document.getElementById('status-text').innerText = "Sent Successfully!";
-                document.getElementById('progress-bar').classList.add('bg-success');
-            }
-        };
-
-        const readSlice = (o) => reader.readAsArrayBuffer(file.slice(o, o + chunkSize));
-        readSlice(0);
-    }
+    // --- Common UI Functions ---
 
     function updateProgress(current, total) {
         if (total > 0) {
             const p = Math.round((current / total) * 100);
             document.getElementById('progress-bar').style.width = p + '%';
+            document.getElementById('current-percentage').innerText = p + '%';
         }
     }
 
@@ -404,7 +487,61 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
+
+    function renderFileList(files) {
+        const container = document.getElementById('file-list-container');
+        container.innerHTML = '';
+        files.forEach((f, index) => {
+            container.innerHTML += `
+                <div class="list-group-item file-list-item d-flex justify-content-between align-items-center" id="file-item-${index}">
+                    <div class="text-truncate" style="max-width: 80%;">${f.name}</div>
+                    <i class="bi bi-hourglass text-muted file-status-icon"></i>
+                </div>
+            `;
+        });
+    }
+
+    function updateFileStatus(index, status) {
+        const el = document.querySelector(`#file-item-${index} .file-status-icon`);
+        if (!el) return;
+        
+        el.className = 'file-status-icon'; // reset
+        if (status === 'loading') {
+            el.className = 'spinner-border spinner-border-sm text-primary file-status-icon';
+        } else if (status === 'success') {
+            el.className = 'bi bi-check-circle-fill text-success file-status-icon';
+        }
+    }
+
+    // 接收端用的簡易列表
+    function addReceivedFileToList(name) {
+        const container = document.getElementById('file-list-container');
+        const id = 'rx-file-' + document.querySelectorAll('.file-list-item').length;
+        container.innerHTML += `
+             <div class="list-group-item file-list-item d-flex justify-content-between align-items-center" id="${id}">
+                <div class="text-truncate" style="max-width: 80%;">${name}</div>
+                <div class="spinner-border spinner-border-sm text-primary file-status-icon"></div>
+            </div>
+        `;
+    }
+
+    function markLastFileComplete() {
+        const icons = document.querySelectorAll('.file-status-icon');
+        if(icons.length > 0) {
+            const last = icons[icons.length - 1];
+            last.className = 'bi bi-check-circle-fill text-success file-status-icon';
+        }
+    }
+
+    function resetTransferUI() {
+        document.getElementById('transfer-area').classList.add('d-none');
+        document.getElementById('sender-ui').classList.remove('d-none');
+        document.getElementById('file-input').value = ''; // clear input
+        document.getElementById('progress-bar').style.width = '0%';
+    }
+
 </script>
 </body>
 </html>
