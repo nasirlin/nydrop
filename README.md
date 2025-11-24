@@ -7,28 +7,28 @@
 ![Socket.io](https://img.shields.io/badge/Socket.io-v4-black)
 ![WebRTC](https://img.shields.io/badge/WebRTC-Native-orange)
 
-## ✨ 特色 (Features)
+## 特色
 
 * **無伺服器儲存**：檔案透過 P2P 隧道直接傳輸，保障隱私，無檔案大小限制
 * **簡單配對**：捨棄複雜的 URL 分享，採用直覺的「6位數房間代碼」。
 * **跨平台**：基於 Web 技術，支援電腦、手機、平板等任何現代瀏覽器。
 
-## 🛠️ 技術堆疊 (Tech Stack)
+## 技術堆疊
 
-* **Frontend**: HTML5, CSS3, Bootstrap 5, Vanilla JavaScript.
+* **Frontend**: HTML5, CSS3, Bootstrap 5, JavaScript.
 * **Backend**: Node.js, Express.
 * **Real-time Communication**: Socket.io (用於信令交換 Signaling).
 * **P2P Protocol**: WebRTC (RTCPeerConnection, DataChannel).
 * **Database**: Redis (用於暫存房間代碼與 Socket ID 的對應關係).
 * **Infrastructure**: Render (Backend Hosting), GitHub Pages (Frontend Hosting).
 
-## 🧩 系統架構 (Architecture)
+## 系統架構
 
 1.  **Signaling (信令)**: 使用 Socket.io 交換雙方的 SDP (Session Description Protocol) 和 ICE Candidates。
 2.  **Room Management**: 使用 Redis 設定 TTL (Time-To-Live)，讓配對代碼在 5 分鐘後自動過期。
 3.  **Data Transfer**: 建立 WebRTC `DataChannel`，繞過伺服器直接傳輸二進位檔案資料 (ArrayBuffer)。
 
-## ⚠️ 開發挑戰與解決方案 (Technical Challenges)
+## ⚠️開發挑戰與解決方案
 
 在開發過程中，我遇到很多 WebRTC 與網路通訊的經典難題，以下是狀況跟解決過程記錄：
 
