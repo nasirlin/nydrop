@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NY DROP | P2P File Transfer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="function/inside.css">
+
+</head>
+<body>
+
+<div class="main-container">
+    <div class="card card-custom">
+        <div class="card-header-custom">
+            <h1 class="brand-title">NY DROP</h1>
+            <p class="brand-subtitle mb-0">P2P File Transfer</p>
+        </div>
+        <div class="card-body p-4 p-md-5">
+            
+            <div id="connection-warning" class="alert alert-danger d-none mb-4" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Connection Error:</strong> Cannot reach server.
+            </div>
+
+            <div id="step-role" class="step-section step-active text-center">
+                <div class="mb-4">
+                    <span class="badge bg-light text-dark rounded-pill px-3 py-2 border">
+                        <span id="socket-status-dot" class="status-dot"></span>
+                        <span id="socket-status-text">Connecting...</span>
+                    </span>
+                </div>
+
+                <h4 class="mb-4 fw-bold brand-font text-secondary" style="text-transform: none;">Choose MODE</h4>
+                
+                <div class="d-grid gap-3">
+                    <button type="button" class="btn btn-primary-custom btn-custom d-flex align-items-center justify-content-center" onclick="startSender()">
+                        <i class="bi bi-send-fill me-3 fs-5"></i> SEND
+                    </button>
+                    <button type="button" class="btn btn-outline-custom btn-custom d-flex align-items-center justify-content-center" onclick="startReceiver()">
+                        <i class="bi bi-download me-3 fs-5"></i> RECEIVE
+                    </button>
+                </div>
+            </div>
+
+            <div id="step-sender-wait" class="step-section text-center">
+                <h6 class="text-uppercase text-muted fw-bold mb-3 ls-1">Your Pairing Code</h6>
+                
+                <div class="bg-light p-4 rounded-4 mb-4 border border-2">
+                    <div id="code-display">...</div>
+                </div>
+                
+                <div class="d-flex align-items-center justify-content-center text-primary bg-primary-subtle p-3 rounded-3">
+                     <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+                     <span class="fw-bold">Waiting for receiver...</span>
+                </div>
+                
+                <button class="btn btn-link text-muted mt-3 text-decoration-none" onclick="location.reload()">Cancel</button>
+            </div>
+
+            <div id="step-receiver-input" class="step-section">
+                <div class="text-center mb-4">
+                    <h5 class="fw-bold text-dark">Enter Code</h5>
+                    <p class="text-muted small">Input the 6-digit code from sender</p>
+                </div>
+                
+                <div class="mb-4">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="input-code" class="form-control form-control-lg" placeholder="000000" autocomplete="off">
+                </div>
+                
+                <div class="d-grid">
+                    <button type="button" id="join-btn" class="btn btn-success btn-custom py-3" style="background: #10B981; border:none;" onclick="joinRoom()">
+                        CONNECT
+                    </button>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-link text-muted text-decoration-none" onclick="location.reload()">Back</button>
+                </div>
+            </div>
+
+            <div id="step-transfer" class="step-section">
+                <div class="text-center mb-4">
+                    <div class="display-1 text-success mb-3"><i class="bi bi-shield-check"></i></div>
+                    <h4 class="fw-bold">Connected!</h4>
+                    <p class="text-muted">Secure P2P tunnel established.</p>
+                </div>
+                
+                <div id="sender-ui" class="d-none">
+                    <div class="border-2 border-dashed border-primary rounded-4 p-4 text-center mb-3 bg-light" onclick="document.getElementById('file-input').click()" style="cursor: pointer;">
+                        <i class="bi bi-cloud-upload display-4 text-primary mb-2"></i>
+                        <p class="fw-bold mb-0">Click to Select File</p>
+                    </div>
+                    <input type="file" id="file-input" class="d-none" onchange="sendFile()">
+                    <p id="file-name-display" class="text-center text-muted small"></p>
+                </div>
+
+                <div id="receiver-ui" class="d-none text-center">
+                    <div class="spinner-grow text-primary mb-3" role="status"></div>
+                    <h5>Waiting for file...</h5>
+                </div>
+
+                <div class="mt-4 d-none" id="progress-container">
+                    <div class="progress" style="height: 12px; border-radius: 6px;">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; background: var(--primary-gradient);"></div>
+                    </div>
+                     <p id="status-text" class="text-center mt-2 small fw-bold text-dark"></p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <div class="footer-text">
+        COPYRIGHT 2025 NYDROP NASIR
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    const SERVER_URL = "https://nydrop.onrender.com"; 
+    
+    let socket;
+    let peerConnection;
+    let dataChannel;
+    let roomId;
+    let isInitiator = false;
+    let candidateQueue = [];
+
+    const rtcConfig = {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    console.log("Initializing System...");
+    
+    try {
+        socket = io(SERVER_URL, {
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 5
+        });
+
+        socket.on('connect', () => {
+            console.log("Connected to Server:", socket.id);
+            updateSocketUI(true);
+        });
+
+        socket.on('disconnect', () => updateSocketUI(false));
+        socket.on('connect_error', (err) => {
+            console.error("Socket Error:", err);
+            updateSocketUI(false);
+        });
+
+    } catch (e) {
+        alert("Socket failed to load. Check internet.");
+    }
+
+    function updateSocketUI(isOnline) {
+        const dot = document.getElementById('socket-status-dot');
+        const text = document.getElementById('socket-status-text');
+        const warn = document.getElementById('connection-warning');
+        
+        if(isOnline) {
+            dot.style.backgroundColor = '#10B981';
+            text.innerText = 'Online';
+            warn.classList.add('d-none');
+        } else {
+            dot.style.backgroundColor = '#EF4444';
+            text.innerText = 'Offline';
+            warn.classList.remove('d-none');
+        }
+    }
+
+    function startSender() {
+        if (!socket.connected) return alert("Wait for connection...");
+        isInitiator = true;
+        socket.emit('create-room');
+        showStep('step-sender-wait');
+    }
+
+    function startReceiver() {
+        if (!socket.connected) return alert("Wait for connection...");
+        isInitiator = false;
+        showStep('step-receiver-input');
+    }
+
+    function joinRoom() {
+        const input = document.getElementById('input-code');
+        roomId = input.value.trim();
+        if(roomId.length !== 6) return alert("Enter 6 digits");
+        
+        socket.emit('join-room', roomId);
+        document.getElementById('join-btn').innerText = "Connecting...";
+        document.getElementById('join-btn').disabled = true;
+    }
+
+    function showStep(stepId) {
+        document.querySelectorAll('.step-section').forEach(el => {
+            el.classList.remove('step-active');
+        });
+        
+        const target = document.getElementById(stepId);
+        target.classList.add('step-active');
+    }
+
+    if (socket) {
+        socket.on('room-created', (code) => {
+            roomId = code;
+            document.getElementById('code-display').innerText = code;
+        });
+
+        socket.on('error', (msg) => {
+            alert(msg);
+            location.reload();
+        });
+
+        socket.on('peer-joined', async () => {
+            console.log("Receiver joined! Starting WebRTC...");
+            
+            createPeerConnection();
+            
+            dataChannel = peerConnection.createDataChannel("fileTransfer");
+            setupDataChannel(dataChannel);
+
+            try {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                console.log("Sending Offer...");
+                socket.emit('signal', { roomId, signalData: { type: 'offer', sdp: offer } });
+            } catch(err) {
+                console.error("Offer Error", err);
+            }
+        });
+
+        socket.on('signal', async (data) => {
+            const { type, sdp, candidate } = data;
+            if (!peerConnection) createPeerConnection();
+
+            try {
+                if (type === 'offer') {
+                    if (isInitiator) return;
+                    console.log("Received Offer");
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+                    processQueue();
+
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    
+                    console.log("Sending Answer...");
+                    socket.emit('signal', { roomId, signalData: { type: 'answer', sdp: answer } });
+                }
+                
+                else if (type === 'answer') {
+                    if (!isInitiator) return;
+                    console.log("Received Answer");
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+                    processQueue();
+                }
+
+                else if (candidate) {
+                    if (peerConnection.remoteDescription) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    } else {
+                        console.log("Queuing Candidate...");
+                        candidateQueue.push(new RTCIceCandidate(candidate));
+                    }
+                }
+
+            } catch (e) {
+                console.error("Signal Error:", e);
+            }
+        });
+    }
+
+    function createPeerConnection() {
+        if (peerConnection) return;
+        
+        console.log("Creating RTCPeerConnection");
+        peerConnection = new RTCPeerConnection(rtcConfig);
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('signal', { roomId, signalData: { candidate: event.candidate } });
+            }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+            console.log("State:", peerConnection.connectionState);
+        };
+
+        peerConnection.ondatachannel = (event) => {
+            console.log("Received DataChannel");
+            setupDataChannel(event.channel);
+        };
+    }
+
+    async function processQueue() {
+        while(candidateQueue.length > 0) {
+            await peerConnection.addIceCandidate(candidateQueue.shift());
+        }
+    }
+
+    function setupDataChannel(channel) {
+        dataChannel = channel;
+        
+        dataChannel.onopen = () => {
+            console.log("CHANNEL OPEN! Switching UI...");
+            
+            showStep('step-transfer');
+            
+            if (isInitiator) {
+                document.getElementById('sender-ui').classList.remove('d-none');
+            } else {
+                document.getElementById('receiver-ui').classList.remove('d-none');
+            }
+        };
+
+        dataChannel.onmessage = handleMessage;
+    }
+
+    let receivedBuffers = [];
+    let receivedSize = 0;
+    let expectedSize = 0;
+    let fileName = "";
+
+    function handleMessage(event) {
+        const data = event.data;
+        
+        if (typeof data === 'string') {
+            const meta = JSON.parse(data);
+            if(meta.type === 'metadata') {
+                fileName = meta.name;
+                expectedSize = meta.size;
+                receivedBuffers = [];
+                receivedSize = 0;
+                document.getElementById('progress-container').classList.remove('d-none');
+                document.getElementById('status-text').innerText = `Receiving: ${fileName}`;
+                document.getElementById('receiver-ui').classList.add('d-none');
+            }
+            return;
+        }
+
+        receivedBuffers.push(data);
+        receivedSize += data.byteLength;
+        updateProgress(receivedSize, expectedSize);
+
+        if (receivedSize === expectedSize) {
+            const blob = new Blob(receivedBuffers);
+            downloadFile(blob, fileName);
+            document.getElementById('status-text').innerText = "Download Complete!";
+            document.getElementById('progress-bar').classList.add('bg-success');
+        }
+    }
+
+    function sendFile() {
+        const file = document.getElementById('file-input').files[0];
+        if (!file) return;
+
+        document.getElementById('file-name-display').innerText = file.name;
+        document.getElementById('progress-container').classList.remove('d-none');
+        document.getElementById('status-text').innerText = "Sending...";
+
+        dataChannel.send(JSON.stringify({
+            type: 'metadata',
+            name: file.name,
+            size: file.size
+        }));
+
+        const chunkSize = 16 * 1024;
+        let offset = 0;
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            dataChannel.send(e.target.result);
+            offset += e.target.result.byteLength;
+            updateProgress(offset, file.size);
+            
+            if (offset < file.size) {
+                setTimeout(() => readSlice(offset), 0);
+            } else {
+                document.getElementById('status-text').innerText = "Sent Successfully!";
+                document.getElementById('progress-bar').classList.add('bg-success');
+            }
+        };
+
+        const readSlice = (o) => reader.readAsArrayBuffer(file.slice(o, o + chunkSize));
+        readSlice(0);
+    }
+
+    function updateProgress(current, total) {
+        if (total > 0) {
+            const p = Math.round((current / total) * 100);
+            document.getElementById('progress-bar').style.width = p + '%';
+        }
+    }
+
+    function downloadFile(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+</script>
+</body>
+</html>
