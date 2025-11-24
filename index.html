@@ -3,545 +3,498 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NY DROP | Multi-File P2P Transfer</title>
+    <title>NY DROP | 10GB+ P2P Transfer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
-     <link rel="stylesheet" href="function/inside.css">
     <style>
-        .file-list-item {
-            font-size: 0.9rem;
-            background: #fff;
-            border: 1px solid #eee;
-        }
-        .file-status-icon {
-            width: 20px;
-        }
+        :root { --primary-color: #2563eb; --bg-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: #334155; }
+        .card-custom { border: none; border-radius: 24px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); overflow: hidden; }
+        .brand-title { font-family: 'Montserrat', sans-serif; font-weight: 800; letter-spacing: -1px; color: #0f172a; }
+        .btn-custom { border-radius: 12px; font-weight: 600; letter-spacing: 0.5px; transition: all 0.2s; }
+        .step-section { display: none; animation: fadeIn 0.4s ease; }
+        .step-active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .file-list-item { font-size: 0.9rem; background: #fff; border: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-<div class="main-container">
-    <div class="card card-custom">
-        <div class="card-header-custom">
-            <h1 class="brand-title">NY DROP</h1>
-            <p class="brand-subtitle mb-0">Pro P2P File Transfer</p>
-        </div>
+<div class="container d-flex align-items-center justify-content-center min-vh-100 py-4">
+    <div class="card card-custom col-12 col-md-8 col-lg-6">
         <div class="card-body p-4 p-md-5">
             
+            <div class="text-center mb-4">
+                <h1 class="brand-title mb-0">NY DROP <span class="text-primary">MAX</span></h1>
+                <p class="text-muted small">Large File Support (10GB+)</p>
+            </div>
+
             <div id="connection-warning" class="alert alert-danger d-none mb-4" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                <strong>Connection Error:</strong> Cannot reach server.
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Connection Error.
             </div>
 
             <div id="step-role" class="step-section step-active text-center">
                 <div class="mb-4">
                     <span class="badge bg-light text-dark rounded-pill px-3 py-2 border">
-                        <span id="socket-status-dot" class="status-dot"></span>
+                        <span id="socket-status-dot" class="d-inline-block rounded-circle me-2" style="width:8px; height:8px; background:#ccc;"></span>
                         <span id="socket-status-text">Connecting...</span>
                     </span>
                 </div>
-
-                <h4 class="mb-4 fw-bold brand-font text-secondary" style="text-transform: none;">Choose MODE</h4>
                 
                 <div class="d-grid gap-3">
-                    <button type="button" class="btn btn-primary-custom btn-custom d-flex align-items-center justify-content-center" onclick="startSender()">
-                        <i class="bi bi-send-fill me-3 fs-5"></i> SEND
+                    <button class="btn btn-primary btn-lg btn-custom py-3" onclick="startSender()">
+                        <i class="bi bi-send-fill me-2"></i> I want to SEND
                     </button>
-                    <button type="button" class="btn btn-outline-custom btn-custom d-flex align-items-center justify-content-center" onclick="startReceiver()">
-                        <i class="bi bi-download me-3 fs-5"></i> RECEIVE
+                    <button class="btn btn-outline-dark btn-lg btn-custom py-3" onclick="startReceiver()">
+                        <i class="bi bi-download me-2"></i> I want to RECEIVE
                     </button>
                 </div>
             </div>
 
             <div id="step-sender-wait" class="step-section text-center">
-                <h6 class="text-uppercase text-muted fw-bold mb-3 ls-1">Your Pairing Code</h6>
-                
-                <div class="bg-light p-4 rounded-4 mb-4 border border-2">
-                    <div id="code-display" class="fs-1 fw-bold text-dark">...</div>
+                <h6 class="text-muted text-uppercase fw-bold mb-3">Share this Code</h6>
+                <div class="bg-light p-4 rounded-4 mb-4 border">
+                    <div id="code-display" class="display-4 fw-bold text-dark" style="letter-spacing: 2px;">...</div>
                 </div>
-                
-                <div class="d-flex align-items-center justify-content-center text-primary bg-primary-subtle p-3 rounded-3">
-                     <div class="spinner-border spinner-border-sm me-3" role="status"></div>
-                     <span class="fw-bold">Waiting for receiver...</span>
+                <div class="d-flex align-items-center justify-content-center text-primary">
+                     <div class="spinner-border spinner-border-sm me-2"></div>
+                     <span>Waiting for receiver...</span>
                 </div>
-                
-                <button class="btn btn-link text-muted mt-3 text-decoration-none" onclick="location.reload()">Cancel</button>
+                <button class="btn btn-link text-muted mt-3" onclick="location.reload()">Cancel</button>
             </div>
 
             <div id="step-receiver-input" class="step-section">
                 <div class="text-center mb-4">
-                    <h5 class="fw-bold text-dark">Enter Code</h5>
-                    <p class="text-muted small">Input the 6-digit code from sender</p>
+                    <h5 class="fw-bold">Enter Pairing Code</h5>
                 </div>
-                
                 <div class="mb-4">
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="input-code" class="form-control form-control-lg text-center fw-bold" placeholder="000000" autocomplete="off">
+                    <input type="text" inputmode="numeric" maxlength="6" id="input-code" class="form-control form-control-lg text-center fw-bold fs-2" placeholder="000000">
                 </div>
-                
                 <div class="d-grid">
-                    <button type="button" id="join-btn" class="btn btn-success btn-custom py-3" style="background: #10B981; border:none;" onclick="joinRoom()">
-                        CONNECT
-                    </button>
+                    <button id="join-btn" class="btn btn-success btn-lg btn-custom" onclick="joinRoom()">CONNECT</button>
                 </div>
                 <div class="text-center mt-3">
-                    <button class="btn btn-link text-muted text-decoration-none" onclick="location.reload()">Back</button>
+                    <button class="btn btn-link text-muted" onclick="location.reload()">Back</button>
                 </div>
             </div>
 
             <div id="step-transfer" class="step-section">
-                <div class="text-center mb-3">
-                    <span class="badge bg-success-subtle text-success border border-success px-3 rounded-pill">
-                        <i class="bi bi-shield-check me-1"></i> Secure Tunnel Established
-                    </span>
-                </div>
-                
                 <div id="sender-ui" class="d-none">
-                    <div class="border-2 border-dashed border-primary rounded-4 p-4 text-center mb-3 bg-light hover-effect" onclick="document.getElementById('file-input').click()" style="cursor: pointer; transition: all 0.2s;">
-                        <i class="bi bi-files display-4 text-primary mb-2"></i>
-                        <p class="fw-bold mb-0">Select Multiple Files</p>
-                        <small class="text-muted">Click to browse</small>
+                    <div class="border-2 border-dashed border-primary rounded-4 p-5 text-center mb-4 bg-light" onclick="document.getElementById('file-input').click()" style="cursor: pointer;">
+                        <i class="bi bi-cloud-upload display-3 text-primary mb-3"></i>
+                        <h5 class="fw-bold">Select Large Files</h5>
+                        <small class="text-muted">Supports 10GB+ via Stream</small>
                     </div>
                     <input type="file" id="file-input" class="d-none" multiple onchange="handleFilesSelect()">
                 </div>
 
-                <div id="receiver-ui" class="d-none text-center mb-3">
-                    <div class="p-3 bg-light rounded-3 border">
-                        <div class="spinner-grow text-primary spinner-grow-sm me-2" role="status"></div>
-                        <span class="fw-bold text-dark">Ready to receive files...</span>
+                <div id="receiver-ui" class="d-none text-center">
+                    <div class="p-4 bg-light rounded-3 border mb-3">
+                        <div class="spinner-grow text-primary mb-3" role="status"></div>
+                        <h5 class="fw-bold">Connected</h5>
+                        <p class="text-muted">Waiting for sender to choose files...</p>
                     </div>
                 </div>
 
-                <div id="transfer-area" class="d-none">
-                    
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <small class="fw-bold text-dark" id="current-filename">Preparing...</small>
-                            <small class="text-muted" id="current-percentage">0%</small>
-                        </div>
-                        <div class="progress" style="height: 10px; border-radius: 5px;">
-                            <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; background: var(--primary-gradient);"></div>
+                <div id="receiver-accept-ui" class="d-none text-center">
+                    <div class="card border-primary mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title text-primary fw-bold mb-3">Incoming File</h5>
+                            <p class="fs-5 fw-bold text-dark mb-1" id="incoming-filename">filename.ext</p>
+                            <p class="text-muted small mb-4" id="incoming-filesize">0 MB</p>
+                            
+                            <div class="alert alert-info small text-start">
+                                <i class="bi bi-info-circle me-1"></i> 
+                                To save large files (10GB+), please select a location on your disk immediately.
+                            </div>
+
+                            <button class="btn btn-primary w-100 py-2" onclick="acceptDownload()">
+                                <i class="bi bi-save me-2"></i> Save to Disk
+                            </button>
                         </div>
                     </div>
+                </div>
 
-                    <h6 class="text-muted text-uppercase small fw-bold mb-2">Transfer Queue</h6>
-                    <div class="list-group list-group-flush rounded-3 border" id="file-list-container" style="max-height: 200px; overflow-y: auto;">
-                        </div>
-                    
+                <div id="transfer-progress-area" class="d-none">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="fw-bold" id="progress-filename">Transferring...</small>
+                        <small class="text-primary fw-bold" id="transfer-speed">0 MB/s</small>
+                    </div>
+                    <div class="progress mb-2" style="height: 10px;">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted" id="progress-percent">0%</small>
+                        <small class="text-muted" id="progress-transferred">0 / 0 MB</small>
+                    </div>
+
+                    <div class="mt-4 border-top pt-3">
+                        <h6 class="text-muted small fw-bold">Activity Log</h6>
+                        <div id="file-list-log" class="list-group list-group-flush small" style="max-height: 150px; overflow-y: auto;"></div>
+                    </div>
+
                     <div id="transfer-complete-msg" class="text-center mt-3 d-none">
-                        <h5 class="text-success fw-bold">All Files Transferred!</h5>
+                        <h5 class="text-success fw-bold">All Transfers Complete!</h5>
                         <button class="btn btn-sm btn-outline-dark mt-2" onclick="resetTransferUI()">Send More</button>
                     </div>
                 </div>
             </div>
 
         </div>
-    </div>
-    
-    <div class="footer-text">
-        COPYRIGHT 2025 NYDROP NASIR
+        <div class="card-footer bg-white border-0 text-center py-3 text-muted small">
+            &copy; 2025 NY DROP | NTUB DBMS Project
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const SERVER_URL = "https://nydrop.onrender.com"; 
-    
-    // Core Variables
+    // --- Configuration ---
+    const SERVER_URL = "https://nydrop.onrender.com"; // 保持你的後端地址
+    const CHUNK_SIZE = 64 * 1024; // 64KB per chunk (Balanced)
+    // 10MB Buffer Limit (防止發送端記憶體炸裂)
+    const MAX_BUFFER_AMOUNT = 10 * 1024 * 1024; 
     let socket, peerConnection, dataChannel, roomId;
     let isInitiator = false;
-    let candidateQueue = [];
-    
-    // Transfer State
     let fileQueue = [];
-    let isTransferring = false;
     let totalFilesProcessed = 0;
-
-    // RTC Config
-    const rtcConfig = {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    };
-
-    // Constants for Backpressure (防止卡頓的關鍵)
-    const CHUNK_SIZE = 16 * 1024; // 16KB chunks
-    const MAX_BUFFER_AMOUNT = 64 * 1024; // 64KB buffer limit (Safety threshold)
-
-
-    console.log("Initializing System...");
+    let currentFileHandle = null;
+    let currentWritable = null;
+    let currentMeta = null;
+    let receivedSize = 0;
     
+    let lastTime = 0;
+    let lastSize = 0;
+
     try {
-        socket = io(SERVER_URL, {
-            transports: ['websocket', 'polling'],
-            reconnectionAttempts: 5
-        });
+        socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
+        socket.on('connect', () => updateStatus(true));
+        socket.on('disconnect', () => updateStatus(false));
+        socket.on('connect_error', () => updateStatus(false));
+    } catch (e) { console.error(e); }
 
-        socket.on('connect', () => {
-            console.log("Connected:", socket.id);
-            updateSocketUI(true);
-        });
-
-        socket.on('disconnect', () => updateSocketUI(false));
-        socket.on('connect_error', () => updateSocketUI(false));
-
-    } catch (e) {
-        console.error(e);
-    }
-
-    function updateSocketUI(isOnline) {
+    function updateStatus(online) {
         const dot = document.getElementById('socket-status-dot');
         const text = document.getElementById('socket-status-text');
         const warn = document.getElementById('connection-warning');
-        
-        if(isOnline) {
-            dot.style.backgroundColor = '#10B981';
-            text.innerText = 'Online';
-            warn.classList.add('d-none');
-        } else {
-            dot.style.backgroundColor = '#EF4444';
-            text.innerText = 'Offline';
-            warn.classList.remove('d-none');
-        }
+        dot.style.background = online ? '#10B981' : '#EF4444';
+        text.innerText = online ? 'Online' : 'Offline';
+        if(!online) warn.classList.remove('d-none'); else warn.classList.add('d-none');
     }
 
-    // --- UI Navigation ---
+    // --- Navigation ---
     function startSender() {
-        if (!socket.connected) return alert("Connecting to server...");
         isInitiator = true;
         socket.emit('create-room');
         showStep('step-sender-wait');
     }
-
     function startReceiver() {
-        if (!socket.connected) return alert("Connecting to server...");
         isInitiator = false;
         showStep('step-receiver-input');
     }
-
     function joinRoom() {
-        const input = document.getElementById('input-code');
-        roomId = input.value.trim();
-        if(roomId.length !== 6) return alert("Please enter 6 digits");
-        
+        roomId = document.getElementById('input-code').value.trim();
+        if(roomId.length !== 6) return alert("6 digits required");
         socket.emit('join-room', roomId);
-        const btn = document.getElementById('join-btn');
-        btn.innerText = "Connecting...";
-        btn.disabled = true;
+        document.getElementById('join-btn').disabled = true;
+        document.getElementById('join-btn').innerText = "Connecting...";
+    }
+    function showStep(id) {
+        document.querySelectorAll('.step-section').forEach(e => e.classList.remove('step-active'));
+        document.getElementById(id).classList.add('step-active');
     }
 
-    function showStep(stepId) {
-        document.querySelectorAll('.step-section').forEach(el => el.classList.remove('step-active'));
-        document.getElementById(stepId).classList.add('step-active');
-    }
+    // --- Socket Logic ---
+    socket.on('room-created', (code) => {
+        roomId = code;
+        document.getElementById('code-display').innerText = code;
+    });
+    
+    socket.on('peer-joined', async () => {
+        setupRTC();
+        dataChannel = peerConnection.createDataChannel("fileTransfer");
+        setupDataChannel(dataChannel);
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('signal', { roomId, signalData: { type: 'offer', sdp: offer } });
+    });
 
-    // --- Socket Events ---
-    if (socket) {
-        socket.on('room-created', (code) => {
-            roomId = code;
-            document.getElementById('code-display').innerText = code;
-        });
-
-        socket.on('error', (msg) => {
-            alert(msg);
-            location.reload();
-        });
-
-        socket.on('peer-joined', async () => {
-            console.log("Peer joined, initiating WebRTC...");
-            createPeerConnection();
-            
-            dataChannel = peerConnection.createDataChannel("fileTransfer");
-            setupDataChannel(dataChannel);
-
-            try {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.emit('signal', { roomId, signalData: { type: 'offer', sdp: offer } });
-            } catch(err) { console.error(err); }
-        });
-
-        socket.on('signal', async (data) => {
-            const { type, sdp, candidate } = data;
-            if (!peerConnection) createPeerConnection();
-
-            try {
-                if (type === 'offer') {
-                    if (isInitiator) return;
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-                    processQueue();
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    socket.emit('signal', { roomId, signalData: { type: 'answer', sdp: answer } });
-                }
-                else if (type === 'answer') {
-                    if (!isInitiator) return;
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-                    processQueue();
-                }
-                else if (candidate) {
-                    if (peerConnection.remoteDescription) {
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                    } else {
-                        candidateQueue.push(new RTCIceCandidate(candidate));
-                    }
-                }
-            } catch (e) { console.error(e); }
-        });
-    }
+    socket.on('signal', async (data) => {
+        if(!peerConnection) setupRTC();
+        const { type, sdp, candidate } = data;
+        if(type === 'offer') {
+            await peerConnection.setRemoteDescription(sdp);
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('signal', { roomId, signalData: { type: 'answer', sdp: answer } });
+        } else if (type === 'answer') {
+            await peerConnection.setRemoteDescription(sdp);
+        } else if (candidate) {
+            await peerConnection.addIceCandidate(candidate);
+        }
+    });
 
     // --- WebRTC Core ---
-    function createPeerConnection() {
-        if (peerConnection) return;
-        peerConnection = new RTCPeerConnection(rtcConfig);
-
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) socket.emit('signal', { roomId, signalData: { candidate: event.candidate } });
+    function setupRTC() {
+        peerConnection = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+        peerConnection.onicecandidate = e => {
+            if(e.candidate) socket.emit('signal', { roomId, signalData: { candidate: e.candidate } });
         };
-
-        peerConnection.ondatachannel = (event) => {
-            setupDataChannel(event.channel);
+        peerConnection.ondatachannel = e => {
+            dataChannel = e.channel;
+            setupDataChannel(dataChannel);
         };
-    }
-
-    async function processQueue() {
-        while(candidateQueue.length > 0) await peerConnection.addIceCandidate(candidateQueue.shift());
     }
 
     function setupDataChannel(channel) {
-        dataChannel = channel;
-        dataChannel.binaryType = 'arraybuffer'; // 重要：確保二進位傳輸
-        
-        dataChannel.onopen = () => {
-            console.log("DATA CHANNEL OPEN");
+        channel.binaryType = 'arraybuffer';
+        channel.onopen = () => {
             showStep('step-transfer');
-            if (isInitiator) document.getElementById('sender-ui').classList.remove('d-none');
+            if(isInitiator) document.getElementById('sender-ui').classList.remove('d-none');
             else document.getElementById('receiver-ui').classList.remove('d-none');
         };
-
-        dataChannel.onmessage = handleReceiveMessage;
+        channel.onmessage = handleMessage;
     }
 
-    // --- SENDER LOGIC (Multi-file + Backpressure) ---
-
+    // ==========================================
+    // SENDER LOGIC (Backpressure + Ack)
+    // ==========================================
     function handleFilesSelect() {
-        const files = document.getElementById('file-input').files;
-        if (files.length === 0) return;
-
-        fileQueue = Array.from(files); // 轉為陣列
+        const input = document.getElementById('file-input');
+        if(input.files.length === 0) return;
+        
+        fileQueue = Array.from(input.files);
         totalFilesProcessed = 0;
-
-        // 初始化 UI
-        document.getElementById('transfer-area').classList.remove('d-none');
-        document.getElementById('transfer-complete-msg').classList.add('d-none');
         
-        renderFileList(fileQueue);
+        document.getElementById('sender-ui').classList.add('d-none');
+        document.getElementById('transfer-progress-area').classList.remove('d-none');
         
-        // 開始傳輸第一個檔案
         processSendQueue();
     }
 
     async function processSendQueue() {
         if (fileQueue.length === 0) {
-            // 全部傳完
-            document.getElementById('current-filename').innerText = "All files sent.";
             document.getElementById('transfer-complete-msg').classList.remove('d-none');
+            document.getElementById('progress-filename').innerText = "Done.";
             return;
         }
 
         const file = fileQueue[0];
-        updateFileStatus(totalFilesProcessed, 'loading');
+        addLog(`Preparing: ${file.name} (${formatSize(file.size)})`);
         
         try {
-            await sendSingleFile(file);
-            // 成功傳送一個
-            updateFileStatus(totalFilesProcessed, 'success');
-            fileQueue.shift(); // 移除已傳送
-            totalFilesProcessed++;
-            // 遞迴呼叫下一個
-            processSendQueue(); 
-        } catch (err) {
-            console.error("Send error:", err);
-            alert("Error sending file: " + file.name);
+            await sendFileHandshake(file);
+            // Wait for 'ack-start' from receiver inside handleMessage
+        } catch (e) {
+            alert("Error sending: " + e);
         }
     }
 
-    // 單一檔案傳送邏輯 (含背壓控制)
-    function sendSingleFile(file) {
-        return new Promise((resolve, reject) => {
-            console.log(`Starting transfer: ${file.name}`);
-            document.getElementById('current-filename').innerText = `Sending: ${file.name}`;
-            
-            // 1. 傳送 Metadata
-            dataChannel.send(JSON.stringify({
-                type: 'metadata',
-                name: file.name,
-                size: file.size,
-                mime: file.type
-            }));
-
-            const reader = new FileReader();
-            let offset = 0;
-
-            reader.onload = async (e) => {
-                const buffer = e.target.result;
-                
-                // 背壓控制循環：如果 buffer 滿了就等
-                try {
-                    while (dataChannel.bufferedAmount > MAX_BUFFER_AMOUNT) {
-                        await new Promise(r => setTimeout(r, 10)); // 等待 10ms 直到 buffer 釋放
-                    }
-                    
-                    dataChannel.send(buffer);
-                    offset += buffer.byteLength;
-                    updateProgress(offset, file.size);
-
-                    if (offset < file.size) {
-                        // 讀取下一塊
-                        readNextChunk();
-                    } else {
-                        console.log("File sent finish");
-                        resolve(); // Promise 完成
-                    }
-                } catch(err) {
-                    reject(err);
-                }
-            };
-
-            reader.onerror = reject;
-
-            function readNextChunk() {
-                const slice = file.slice(offset, offset + CHUNK_SIZE);
-                reader.readAsArrayBuffer(slice);
-            }
-
-            // 開始第一次讀取
-            readNextChunk();
-        });
+    function sendFileHandshake(file) {
+        // Reset UI for new file
+        receivedSize = 0; 
+        updateProgressUI(0, file.size, file.name);
+        
+        // 1. Send Metadata
+        dataChannel.send(JSON.stringify({
+            type: 'metadata',
+            name: file.name,
+            size: file.size,
+            mime: file.type
+        }));
     }
 
-    // --- RECEIVER LOGIC ---
+    async function startSendingData() {
+        const file = fileQueue[0];
+        const reader = file.stream().getReader(); // Use Stream API for efficiency
+        let offset = 0;
+        lastTime = Date.now();
+        lastSize = 0;
 
-    let receivedBuffers = [];
-    let receivedSize = 0;
-    let currentMeta = null;
+        addLog(`Sending: ${file.name}...`);
 
-    function handleReceiveMessage(event) {
+        try {
+            while(true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                // Backpressure: If buffer is full, wait.
+                while (dataChannel.bufferedAmount > MAX_BUFFER_AMOUNT) {
+                    await new Promise(r => setTimeout(r, 10));
+                }
+
+                dataChannel.send(value);
+                offset += value.byteLength;
+                
+                // Update UI occasionally
+                if (offset % (1024 * 1024) < CHUNK_SIZE * 2) {
+                    updateProgressUI(offset, file.size, file.name);
+                }
+            }
+
+            // EOF Signal
+            dataChannel.send(JSON.stringify({ type: 'eof' }));
+            addLog(`Sent: ${file.name} - Success`);
+            
+            fileQueue.shift(); // Remove finished file
+            processSendQueue(); // Next
+
+        } catch (err) {
+            console.error("Send Error:", err);
+            addLog(`Error sending ${file.name}`, true);
+        }
+    }
+
+    // ==========================================
+    // RECEIVER LOGIC (Stream to Disk)
+    // ==========================================
+    let legacyBuffer = []; // Fallback for non-Chromium browsers
+
+    async function handleMessage(event) {
         const data = event.data;
 
-        // 1. 收到 Metadata (字串)
+        // Control Messages (JSON)
         if (typeof data === 'string') {
             const msg = JSON.parse(data);
-            if(msg.type === 'metadata') {
+            
+            if (msg.type === 'metadata') {
                 currentMeta = msg;
-                receivedBuffers = [];
                 receivedSize = 0;
+                legacyBuffer = [];
+                lastTime = Date.now();
                 
-                // UI 更新
-                document.getElementById('transfer-area').classList.remove('d-none');
+                // Hide waiting UI, Show Accept UI
                 document.getElementById('receiver-ui').classList.add('d-none');
-                document.getElementById('current-filename').innerText = `Receiving: ${currentMeta.name}`;
+                document.getElementById('transfer-progress-area').classList.add('d-none');
+                document.getElementById('receiver-accept-ui').classList.remove('d-none');
                 
-                // 加到列表 UI
-                addReceivedFileToList(currentMeta.name);
+                document.getElementById('incoming-filename').innerText = msg.name;
+                document.getElementById('incoming-filesize').innerText = formatSize(msg.size);
+            } 
+            else if (msg.type === 'ack-start') {
+                // Received only by sender
+                if (isInitiator) startSendingData();
+            }
+            else if (msg.type === 'eof') {
+                finalizeReceive();
             }
             return;
         }
 
-        // 2. 收到檔案數據 (Binary)
-        if (!currentMeta) return;
-
-        receivedBuffers.push(data);
+        // Binary Data (Chunks)
         receivedSize += data.byteLength;
-        updateProgress(receivedSize, currentMeta.size);
-
-        // 3. 檔案接收完成
-        if (receivedSize === currentMeta.size) {
-            const blob = new Blob(receivedBuffers, { type: currentMeta.mime });
-            downloadFile(blob, currentMeta.name);
-            
-            // 標記 UI 為完成
-            markLastFileComplete();
-            
-            // 重置狀態準備接下一個
-            currentMeta = null;
-            receivedBuffers = [];
-            receivedSize = 0;
-            document.getElementById('current-filename').innerText = "Waiting for next file...";
-        }
-    }
-
-    // --- Common UI Functions ---
-
-    function updateProgress(current, total) {
-        if (total > 0) {
-            const p = Math.round((current / total) * 100);
-            document.getElementById('progress-bar').style.width = p + '%';
-            document.getElementById('current-percentage').innerText = p + '%';
-        }
-    }
-
-    function downloadFile(blob, name) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    function renderFileList(files) {
-        const container = document.getElementById('file-list-container');
-        container.innerHTML = '';
-        files.forEach((f, index) => {
-            container.innerHTML += `
-                <div class="list-group-item file-list-item d-flex justify-content-between align-items-center" id="file-item-${index}">
-                    <div class="text-truncate" style="max-width: 80%;">${f.name}</div>
-                    <i class="bi bi-hourglass text-muted file-status-icon"></i>
-                </div>
-            `;
-        });
-    }
-
-    function updateFileStatus(index, status) {
-        const el = document.querySelector(`#file-item-${index} .file-status-icon`);
-        if (!el) return;
         
-        el.className = 'file-status-icon'; // reset
-        if (status === 'loading') {
-            el.className = 'spinner-border spinner-border-sm text-primary file-status-icon';
-        } else if (status === 'success') {
-            el.className = 'bi bi-check-circle-fill text-success file-status-icon';
+        if (currentWritable) {
+            // Modern Method: Write directly to disk
+            await currentWritable.write(data);
+        } else {
+            // Legacy Method: Store in RAM (Risky for >1GB)
+            legacyBuffer.push(data);
+        }
+
+        // UI Update Throttle
+        if (receivedSize % (1024 * 512) < CHUNK_SIZE * 2 || receivedSize === currentMeta.size) {
+            updateProgressUI(receivedSize, currentMeta.size, currentMeta.name);
         }
     }
 
-    // 接收端用的簡易列表
-    function addReceivedFileToList(name) {
-        const container = document.getElementById('file-list-container');
-        const id = 'rx-file-' + document.querySelectorAll('.file-list-item').length;
-        container.innerHTML += `
-             <div class="list-group-item file-list-item d-flex justify-content-between align-items-center" id="${id}">
-                <div class="text-truncate" style="max-width: 80%;">${name}</div>
-                <div class="spinner-border spinner-border-sm text-primary file-status-icon"></div>
-            </div>
-        `;
-    }
-
-    function markLastFileComplete() {
-        const icons = document.querySelectorAll('.file-status-icon');
-        if(icons.length > 0) {
-            const last = icons[icons.length - 1];
-            last.className = 'bi bi-check-circle-fill text-success file-status-icon';
+    // User clicked "Save to Disk"
+    async function acceptDownload() {
+        document.getElementById('receiver-accept-ui').classList.add('d-none');
+        document.getElementById('transfer-progress-area').classList.remove('d-none');
+        
+        try {
+            // Try File System Access API (Chrome/Edge/Opera)
+            if (window.showSaveFilePicker) {
+                currentFileHandle = await window.showSaveFilePicker({
+                    suggestedName: currentMeta.name
+                });
+                currentWritable = await currentFileHandle.createWritable();
+                addLog(`Saving to disk: ${currentMeta.name}`);
+            } else {
+                // Fallback
+                console.warn("File System API not supported. Using RAM.");
+                addLog(`Saving to RAM (Legacy): ${currentMeta.name}`);
+                currentWritable = null;
+            }
+        } catch (err) {
+            console.error("User cancelled or error:", err);
+            // Cancel transfer logic could go here
+            return; 
         }
+
+        // Tell Sender we are ready
+        dataChannel.send(JSON.stringify({ type: 'ack-start' }));
     }
 
-    function resetTransferUI() {
-        document.getElementById('transfer-area').classList.add('d-none');
-        document.getElementById('sender-ui').classList.remove('d-none');
-        document.getElementById('file-input').value = ''; // clear input
+    async function finalizeReceive() {
+        if (currentWritable) {
+            await currentWritable.close();
+            addLog(`Saved to disk: ${currentMeta.name}`);
+        } else {
+            const blob = new Blob(legacyBuffer);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentMeta.name;
+            a.click();
+            URL.revokeObjectURL(url);
+            legacyBuffer = []; // Free RAM
+            addLog(`Downloaded: ${currentMeta.name}`);
+        }
+
+        // Reset for next file
+        document.getElementById('receiver-ui').classList.remove('d-none');
+        document.getElementById('transfer-progress-area').classList.add('d-none');
         document.getElementById('progress-bar').style.width = '0%';
     }
 
+    // ==========================================
+    // Utilities
+    // ==========================================
+    function updateProgressUI(current, total, name) {
+        const percent = Math.round((current / total) * 100);
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('progress-percent').innerText = percent + '%';
+        document.getElementById('progress-filename').innerText = name;
+        document.getElementById('progress-transferred').innerText = `${formatSize(current)} / ${formatSize(total)}`;
+
+        // Speed Calc
+        const now = Date.now();
+        const diff = now - lastTime;
+        if (diff > 1000) {
+            const speedBytes = (current - lastSize) / (diff / 1000);
+            document.getElementById('transfer-speed').innerText = formatSize(speedBytes) + '/s';
+            lastTime = now;
+            lastSize = current;
+        }
+    }
+
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function addLog(msg, isError = false) {
+        const box = document.getElementById('file-list-log');
+        const div = document.createElement('div');
+        div.className = "list-group-item bg-transparent border-0 py-1 px-0 " + (isError ? "text-danger" : "text-muted");
+        div.innerText = `> ${msg}`;
+        box.prepend(div);
+    }
+    
+    function resetTransferUI() {
+        document.getElementById('transfer-progress-area').classList.add('d-none');
+        document.getElementById('transfer-complete-msg').classList.add('d-none');
+        document.getElementById('sender-ui').classList.remove('d-none');
+        document.getElementById('file-input').value = ''; 
+    }
 </script>
 </body>
 </html>
